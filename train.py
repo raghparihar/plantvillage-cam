@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import numpy as np
-from keras.models import Sequential
-from keras.layers import Convolution2D, ZeroPadding2D, MaxPooling2D
+from keras.models import Sequential, Model
+from keras.layers import Convolution2D, ZeroPadding2D, MaxPooling2D, Input
 from keras.layers.core import Flatten, Dense, Dropout, Lambda
 from keras import backend as K
 from keras.optimizers import SGD
@@ -11,8 +11,8 @@ from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import ModelCheckpoint
 
-# from keras.applications.vgg19 import VGG19 as _BASE_MODEL
-# from keras.applications.vgg19 import preprocess_input
+from keras.applications.vgg16 import VGG16 as _BASE_MODEL
+from keras.applications.vgg16 import preprocess_input
 import h5py
 
 NUMBER_OF_CLASSES  = 13
@@ -31,6 +31,7 @@ def global_average_pooling(x):
     return K.mean(x, axis = (2, 3))
 
 def global_average_pooling_shape(input_shape):
+    print input_shape
     return input_shape[0:2]
 
 #Define helper functions
@@ -57,62 +58,27 @@ def load_model_weights(model, weights_path):
 
 
 #Build Model
-# base_model = _BASE_MODEL(weights='imagenet', include_top=False)
-# x = base_model.output
-# print base_model.input.get_shape()
-# x = Lambda(global_average_pooling, output_shape=global_average_pooling_shape)(x)
-# predictions = Dense(NUMBER_OF_CLASSES, activation = 'softmax', init='normal')(x)
-# model = Model(input=base_model.input, output=predictions)
+if K.image_dim_ordering() == 'th':
+    input_shape = (3, 224, 224)
+else:
+    input_shape = (224, 224, 3)
 
-model = Sequential()
-model.add(ZeroPadding2D((1,1),input_shape=(3,224,224)))
-model.add(Convolution2D(64, 3, 3, activation='relu'))
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(64, 3, 3, activation='relu'))
-model.add(MaxPooling2D((2,2), strides=(2,2)))
+base_model = _BASE_MODEL(weights='imagenet', input_tensor = Input(shape=input_shape), include_top=False)
+base_model.layers.pop() #Remove the last maxpooling layer
 
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(128, 3, 3, activation='relu'))
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(128, 3, 3, activation='relu'))
-model.add(MaxPooling2D((2,2), strides=(2,2)))
+x = base_model.output
+print "Output " ,x
+print "input : ", base_model.input
+print "Input Shape : ", base_model.input.get_shape()
 
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(256, 3, 3, activation='relu'))
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(256, 3, 3, activation='relu'))
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(256, 3, 3, activation='relu'))
-model.add(MaxPooling2D((2,2), strides=(2,2)))
-
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(512, 3, 3, activation='relu'))
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(512, 3, 3, activation='relu'))
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(512, 3, 3, activation='relu'))
-model.add(MaxPooling2D((2,2), strides=(2,2)))
-
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(512, 3, 3, activation='relu'))
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(512, 3, 3, activation='relu'))
-model.add(ZeroPadding2D((1,1)))
-model.add(Convolution2D(512, 3, 3, activation='relu'))
-
-##
-## Load Weights
-##
-# model = load_model_weights(model, "./vgg16_weights.h5")
-
-# Add the GAP layer and the final SoftMax layer
-model.add(Lambda(global_average_pooling,
-          output_shape=global_average_pooling_shape))
-model.add(Dense(NUMBER_OF_CLASSES, activation = 'softmax', init='uniform'))
+x = Lambda(global_average_pooling, output_shape=global_average_pooling_shape)(x)
+predictions = Dense(NUMBER_OF_CLASSES, activation = 'softmax')(x)
+model = Model(input=base_model.input, output=predictions)
 
 sgd = SGD(lr=0.01, decay=1e-6, momentum=0.5, nesterov=True)
 model.compile(loss = 'categorical_crossentropy', optimizer = sgd, metrics=['accuracy'])
-# checkpoint
+
+# Add checkpoints
 filepath="weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint]
@@ -122,7 +88,6 @@ train_datagen = ImageDataGenerator(
         rescale=1./255,
         shear_range=0.2,
         zoom_range=0.2,
-        dim_ordering="th",
         horizontal_flip=True)
 
 # this is the augmentation configuration we will use for testing:
