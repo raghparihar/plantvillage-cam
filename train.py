@@ -9,6 +9,8 @@ from keras.optimizers import SGD
 
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import ModelCheckpoint
+
 # from keras.applications.vgg19 import VGG19 as _BASE_MODEL
 # from keras.applications.vgg19 import preprocess_input
 import h5py
@@ -111,13 +113,17 @@ model.add(Dense(NUMBER_OF_CLASSES, activation = 'softmax', init='uniform'))
 
 sgd = SGD(lr=0.01, decay=1e-6, momentum=0.5, nesterov=True)
 model.compile(loss = 'categorical_crossentropy', optimizer = sgd, metrics=['accuracy'])
+# checkpoint
+filepath="weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
+checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
+callbacks_list = [checkpoint]
 
 # this is the augmentation configuration we will use for training
 train_datagen = ImageDataGenerator(
         rescale=1./255,
         shear_range=0.2,
         zoom_range=0.2,
-        dim_ordering="th",        
+        dim_ordering="th",
         horizontal_flip=True)
 
 # this is the augmentation configuration we will use for testing:
@@ -141,4 +147,5 @@ model.fit_generator(
         samples_per_epoch=nb_train_samples,
         nb_epoch=nb_epoch,
         validation_data=validation_generator,
-        nb_val_samples=nb_validation_samples)
+        nb_val_samples=nb_validation_samples,
+        callbacks=callbacks_list)
