@@ -2,25 +2,20 @@
 
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Convolution2D, ZeroPadding2D, MaxPooling2D, GlobalAveragePooling2D
+from keras.layers import Convolution2D, ZeroPadding2D, MaxPooling2D
 from keras.layers.core import Flatten, Dense, Dropout, Lambda
 from keras import backend as K
 from keras.optimizers import SGD
 
 from keras.preprocessing import image
+from keras.preprocessing.image import ImageDataGenerator
 # from keras.applications.vgg19 import VGG19 as _BASE_MODEL
 # from keras.applications.vgg19 import preprocess_input
-
-"""
-Temporary Monkey Patch
-"""
-import tensorflow as tf
-from tensorflow.python.ops import control_flow_ops
-tf.python.control_flow_ops = control_flow_ops
+import h5py
 
 NUMBER_OF_CLASSES  = 13
 DATA_FOLDER = "/mount/SDC/casava/split-data/output"
-img_width, img_height = 256, 256
+img_width, img_height = 224, 224
 
 train_data_dir = DATA_FOLDER + '/train'
 validation_data_dir = DATA_FOLDER + '/test'
@@ -34,8 +29,6 @@ def global_average_pooling(x):
     return K.mean(x, axis = (2, 3))
 
 def global_average_pooling_shape(input_shape):
-    print "Input Shape : ", input_shape
-    print "Output Shape : ", input_shape[0:2]
     return input_shape[0:2]
 
 #Define helper functions
@@ -44,6 +37,21 @@ def get_output_layer(model, layer_name):
     layer_dict = dict([(layer.name, layer) for layer in model.layers])
     layer = layer_dict[layer_name]
     return layer
+
+def load_model_weights(model, weights_path):
+    print 'Loading model.'
+    f = h5py.File(weights_path)
+    for k in range(f.attrs['nb_layers']):
+        if k >= len(model.layers):
+            # we don't look at the last (fully-connected) layers in the savefile
+            break
+        g = f['layer_{}'.format(k)]
+        weights = [g['param_{}'.format(p)] for p in range(g.attrs['nb_params'])]
+        model.layers[k].set_weights(weights)
+        model.layers[k].trainable = False
+    f.close()
+    print 'Model loaded.'
+    return model
 
 
 #Build Model
@@ -55,51 +63,51 @@ def get_output_layer(model, layer_name):
 # model = Model(input=base_model.input, output=predictions)
 
 model = Sequential()
-model.add(ZeroPadding2D((1,1),input_shape=(3,None,None)))
-model.add(Convolution2D(64, 3, 3, activation='relu', name='conv1_1'))
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(64, 3, 3, activation='relu', name='conv1_2'))
-model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+model.add(ZeroPadding2D((1,1),input_shape=(3,224,224)))
+model.add(Convolution2D(64, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(64, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(128, 3, 3, activation='relu', name='conv2_1'))
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(128, 3, 3, activation='relu', name='conv2_2'))
-model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(128, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(128, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(256, 3, 3, activation='relu', name='conv3_1'))
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(256, 3, 3, activation='relu', name='conv3_2'))
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(256, 3, 3, activation='relu', name='conv3_3'))
-model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(512, 3, 3, activation='relu', name='conv4_1'))
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(512, 3, 3, activation='relu', name='conv4_2'))
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(512, 3, 3, activation='relu', name='conv4_3'))
-model.add(MaxPooling2D((2, 2), strides=(2, 2)))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(512, 3, 3, activation='relu', name='conv5_1'))
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(512, 3, 3, activation='relu', name='conv5_2'))
-model.add(ZeroPadding2D((1, 1)))
-model.add(Convolution2D(512, 3, 3, activation='relu', name='conv5_3'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
 ##
 ## Load Weights
 ##
+# model = load_model_weights(model, "./vgg16_weights.h5")
 
 # Add the GAP layer and the final SoftMax layer
 model.add(Lambda(global_average_pooling,
           output_shape=global_average_pooling_shape))
 model.add(Dense(NUMBER_OF_CLASSES, activation = 'softmax', init='uniform'))
-
-
 
 sgd = SGD(lr=0.01, decay=1e-6, momentum=0.5, nesterov=True)
 model.compile(loss = 'categorical_crossentropy', optimizer = sgd, metrics=['accuracy'])
@@ -109,6 +117,7 @@ train_datagen = ImageDataGenerator(
         rescale=1./255,
         shear_range=0.2,
         zoom_range=0.2,
+        dim_ordering="th",        
         horizontal_flip=True)
 
 # this is the augmentation configuration we will use for testing:
