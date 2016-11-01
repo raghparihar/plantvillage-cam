@@ -2,7 +2,7 @@
 
 import numpy as np
 from keras.models import Sequential, Model
-from keras.layers import Convolution2D, ZeroPadding2D, MaxPooling2D, Input
+from keras.layers import Convolution2D, ZeroPadding2D, MaxPooling2D, Input, Activation, GlobalAveragePooling2D
 from keras.layers.core import Flatten, Dense, Dropout, Lambda
 from keras import backend as K
 from keras.optimizers import SGD
@@ -11,6 +11,8 @@ from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import ModelCheckpoint
 
+from keras.applications.inception_v3 import InceptionV3
+
 from keras.applications.vgg16 import VGG16 as _BASE_MODEL
 from keras.applications.vgg16 import preprocess_input
 import h5py
@@ -18,6 +20,7 @@ import h5py
 NUMBER_OF_CLASSES  = 13
 DATA_FOLDER = "/mount/SDC/casava/split-data/output"
 img_width, img_height = 224, 224
+crop_width, crop_height = 224, 224
 
 train_data_dir = DATA_FOLDER + '/train'
 validation_data_dir = DATA_FOLDER + '/test'
@@ -57,26 +60,19 @@ def load_model_weights(model, weights_path):
     return model
 
 
-#Build Model
-if K.image_dim_ordering() == 'th':
-    input_shape = (3, 224, 224)
-else:
-    input_shape = (224, 224, 3)
-
-base_model = _BASE_MODEL(weights='imagenet', input_tensor = Input(shape=input_shape), include_top=False)
-base_model.layers.pop() #Remove the last maxpooling layer
-
+base_model = InceptionV3(weights='imagenet', include_top=False)
+# add a global spatial average pooling layer
 x = base_model.output
-print "Output " ,x
-print "input : ", base_model.input
-print "Input Shape : ", base_model.input.get_shape()
-
-x = Lambda(global_average_pooling, output_shape=global_average_pooling_shape)(x)
-predictions = Dense(NUMBER_OF_CLASSES, activation = 'softmax')(x)
+x = GlobalAveragePooling2D()(x)
+# let's add a fully-connected layer
+x = Dense(4096, activation='relu')(x)
+x = Dense(4096, activation='relu')(x)
+predictions = Dense(NUMBER_OF_CLASSES, activation='softmax')(x)
+# this is the model we will train
 model = Model(input=base_model.input, output=predictions)
+model.compile(optimizer=SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True), loss='categorical_crossentropy', metrics=["accuracy"])
 
-sgd = SGD(lr=0.01, decay=1e-6, momentum=0.5, nesterov=True)
-model.compile(loss = 'categorical_crossentropy', optimizer = sgd, metrics=['accuracy'])
+
 
 # Add checkpoints
 filepath="weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
