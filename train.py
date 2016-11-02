@@ -11,9 +11,7 @@ from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import ModelCheckpoint
 
-from keras.applications.inception_v3 import InceptionV3
-
-from keras.applications.vgg16 import VGG16 as _BASE_MODEL
+from keras.applications.vgg16 import VGG16
 from keras.applications.vgg16 import preprocess_input
 import h5py
 
@@ -60,14 +58,18 @@ def load_model_weights(model, weights_path):
     return model
 
 
-base_model = InceptionV3(weights='imagenet', include_top=False)
+base_model = VGG16(weights='imagenet', input_tensor=Input((3, 224, 224)),include_top=False)
 # add a global spatial average pooling layer
 x = base_model.output
-x = GlobalAveragePooling2D()(x)
-# let's add a fully-connected layer
-x = Dense(4096, activation='relu')(x)
-x = Dense(4096, activation='relu')(x)
-predictions = Dense(NUMBER_OF_CLASSES, activation='softmax')(x)
+# x = GlobalAveragePooling2D()(x)
+x = Flatten(name="flatten")(x)
+x = Dense(4096, activation='relu', name="dense_1")(x)
+x = Dropout(0.5)(x)
+x = Dense(4096, activation='relu', name="dense_2")(x)
+x = Dropout(0.5)(x)
+x = Dense(NUMBER_OF_CLASSES, name="dense_3")(x)
+predictions = Activation("softmax", name="activation")(x)
+
 # this is the model we will train
 model = Model(input=base_model.input, output=predictions)
 model.compile(optimizer=SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True), loss='categorical_crossentropy', metrics=["accuracy"])
