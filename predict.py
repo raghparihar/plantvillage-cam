@@ -182,7 +182,7 @@ for iteration_number, data in enumerate(validation_generator):
             result = "CORRECT"
             proj = _projection[0, y_pred[_idx]]
             resized_proj = np.asarray(Image.fromarray(proj).resize((basewidth, hsize), Image.ANTIALIAS))
-            DIR = OUTPUT_DIRECTORY+"/"+result+"/"+Y_READABLE[_idx]+"/"+str(uuid.uuid4())+".JPG"
+            DIR = OUTPUT_DIRECTORY+"/"+result+"/"+classMap[y_true[_idx]]+"/"+str(uuid.uuid4())+".JPG"
             try:
                 os.makedirs(DIR)
             except:
@@ -198,7 +198,7 @@ for iteration_number, data in enumerate(validation_generator):
             result = "INCORRECT"
             proj = _projection[0, y_pred[_idx]]
             resized_proj = np.asarray(Image.fromarray(proj).resize((basewidth, hsize), Image.ANTIALIAS))
-            DIR = OUTPUT_DIRECTORY+"/"+result+"/"+Y_READABLE[_idx]+"/"+str(uuid.uuid4())+".JPG"
+            DIR = OUTPUT_DIRECTORY+"/"+result+"/"+classMap[y_true[_idx]]+"/"+str(uuid.uuid4())+".JPG"
             try:
                 os.makedirs(DIR)
             except:
