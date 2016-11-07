@@ -15,6 +15,9 @@ from keras.applications.vgg16 import VGG16
 from keras.applications.vgg16 import preprocess_input
 import h5py
 
+import glob
+import os
+
 NUMBER_OF_CLASSES  = 13
 DATA_FOLDER = "/mount/SDC/casava/split-data/output"
 img_width, img_height = 224, 224
@@ -25,7 +28,6 @@ validation_data_dir = DATA_FOLDER + '/test'
 nb_train_samples = 9284
 nb_validation_samples = 2389
 nb_epoch = 50
-
 
 base_model = VGG16(weights='imagenet', input_tensor=Input((3, 224, 224)),include_top=False)
 # add a global spatial average pooling layer
@@ -50,6 +52,7 @@ filepath="weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
 checkpoint = ModelCheckpoint(filepath, monitor='val_acc', verbose=1, save_best_only=True, mode='max')
 callbacks_list = [checkpoint]
 
+
 # this is the augmentation configuration we will use for training
 train_datagen = ImageDataGenerator(
         rescale=1./255,
@@ -73,10 +76,16 @@ validation_generator = test_datagen.flow_from_directory(
         batch_size=32,
         class_mode='categorical')
 
+#Compute class weights
+class_weights = {}
+for _class in validation_generator.class_indices.keys():
+    class_weights[validation_generator.class_indices[_class]] = len(glob.glob(validation_data_dir+"/"+_class+"/*"))
+
 model.fit_generator(
         train_generator,
         samples_per_epoch=nb_train_samples,
         nb_epoch=nb_epoch,
         validation_data=validation_generator,
         nb_val_samples=nb_validation_samples,
+        class_weights=class_weights,
         callbacks=callbacks_list)

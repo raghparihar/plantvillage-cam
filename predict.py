@@ -122,7 +122,6 @@ for _image in TEST_FILES:
         X_RESIZED.append(_image)
         Y_READABLE.append(_class)
 
-Y = [classMap.index(y) for y in Y_READABLE]
 
 BATCH_SIZE = 32
 test_datagen = keras_image.ImageDataGenerator(rescale=1./255)
@@ -136,7 +135,11 @@ validation_generator = test_datagen.flow_from_directory(
         high_res_map=_high_res_map,
         high_res_target_size=(2000, 2000))
 
+classMap = [0]*len(validation_generator.class_indices.keys())
+for _key in validation_generator.class_indices.keys():
+    classMap[validation_generator.class_indices[_key]] = _key
 
+Y = [classMap.index(y) for y in Y_READABLE]
 PREDS = []
 TRUE_LABELS = []
 
