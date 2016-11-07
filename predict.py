@@ -141,31 +141,12 @@ PREDS = []
 TRUE_LABELS = []
 
 for iteration_number, data in enumerate(validation_generator):
-    #     if iteration_number >= RUN_SIZE:
-    #         break
-    #     _Y_PRED = model.predict(data[0])
-    #     temp_pred = []
-    #     temp_true = []
-    #     Y_TRUE = data[1]
-    #     for _i, x in enumerate(_Y_PRED):
-    #         temp_pred.append(x.argmax())
-    #         temp_true.append(Y_TRUE[_i].argmax())
-    #     print(temp_pred)
-    #     print(temp_true)
-    #     print("="*80)
-    #     PREDS.append(np.array(temp_pred))
-    #     TRUE_LABELS.append(np.array(temp_true))
-    # PREDS = np.array(PREDS).flatten()
-    # TRUE_LABELS = np.array(TRUE_LABELS).flatten()
-    #
-    # from sklearn.metrics import classification_report
-    # print(classification_report(TRUE_LABELS.tolist(), PREDS.tolist()))
-
     y_pred = model.predict(data[0])
     y_pred = np.array([x.argmax() for x in y_pred]).tolist()
     y_true = data[1]
     y_true = np.array([x.argmax() for x in y_true]).tolist()
     high_res_images = data[2]
+    batch_filenames = data[3]
 
     PREDS += y_pred
     TRUE_LABELS += y_true
@@ -191,7 +172,7 @@ for iteration_number, data in enumerate(validation_generator):
             plt.imsave(PATH_TO_PROJECTION, resized_proj)
             PATH_TO_ORIGINAL_IMAGE = DIR+"/ORIGINAL_IMAGE.png"
             keras_image.array_to_img(_high_res_img).resize((basewidth, hsize), Image.ANTIALIAS).save(PATH_TO_ORIGINAL_IMAGE)
-            _result_object = {"predicted":classMap[y_pred[_idx]], "actual": classMap[y_true[_idx]]}
+            _result_object = {"predicted":classMap[y_pred[_idx]], "actual": classMap[y_true[_idx]], "filepath": batch_filenames[_idx]}
             with open(DIR+'/result.json', 'w') as outfile:
                 json.dump(_result_object, outfile)
         else:
@@ -213,11 +194,11 @@ for iteration_number, data in enumerate(validation_generator):
 
             PATH_TO_ORIGINAL_IMAGE = DIR+"/ORIGINAL_IMAGE.png"
             keras_image.array_to_img(_high_res_img).resize((basewidth, hsize), Image.ANTIALIAS).save(PATH_TO_ORIGINAL_IMAGE)
-            _result_object = {"predicted":classMap[y_pred[_idx]], "actual": classMap[y_true[_idx]]}
+            _result_object = {"predicted":classMap[y_pred[_idx]], "actual": classMap[y_true[_idx]], "filepath": batch_filenames[_idx]}
             with open(DIR+'/result.json', 'w') as outfile:
                 json.dump(_result_object, outfile)
 
-    if iteration_number*BATCH_SIZE > len(Y):
+    if (iteration_number+1)*BATCH_SIZE >= len(Y):
         break
 
 from sklearn.metrics import classification_report

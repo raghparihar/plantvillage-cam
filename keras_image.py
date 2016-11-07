@@ -619,6 +619,7 @@ class DirectoryIterator(Iterator):
         else:
             return batch_x
 
+        batch_filenames = [0]*current_batch_size
 
         # The transformation of images is not under thread lock so it can be done in parallel
         batch_x = np.zeros((current_batch_size,) + self.image_shape)
@@ -633,7 +634,7 @@ class DirectoryIterator(Iterator):
             x = self.image_data_generator.random_transform(x)
             x = self.image_data_generator.standardize(x)
             batch_x[i] = x
-
+            batch_filenames[i] = os.path.join(self.directory, fname)
             try: #Quick and dirty fix for cases where the information about the corresponding original image doesnt exist in the high_res_map
                 high_res_img = load_img(self.high_res_map[fname.split("/")[-1]], grayscale=grayscale, target_size=self.high_res_target_size)
                 x = img_to_array(high_res_img, dim_ordering=self.dim_ordering)
@@ -649,6 +650,7 @@ class DirectoryIterator(Iterator):
                     batch_x[i] = batch_x[i-1]
                     batch_x_high_res[i] = batch_x_high_res[i-1]
                     batch_y[i] = batch_y[i-1]
+                    batch_filenames[i] = batch_filenames[i-1]
                     continue
 
 
@@ -661,4 +663,4 @@ class DirectoryIterator(Iterator):
                                                                   hash=np.random.randint(1e4),
                                                                   format=self.save_format)
                 img.save(os.path.join(self.save_to_dir, fname))
-        return batch_x, batch_y, batch_x_high_res
+        return batch_x, batch_y, batch_x_high_res, batch_filenames
