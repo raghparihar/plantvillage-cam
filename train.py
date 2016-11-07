@@ -80,6 +80,10 @@ validation_generator = test_datagen.flow_from_directory(
 class_weights = {}
 for _class in validation_generator.class_indices.keys():
     class_weights[validation_generator.class_indices[_class]] = len(glob.glob(validation_data_dir+"/"+_class+"/*"))
+max_labels = np.max(np.array(class_weights.values()))
+#Normalize the class weights
+for _class in validation_generator.class_indices.keys():
+    class_weights[validation_generator.class_indices[_class]] = max_labels / class_weights[validation_generator.class_indices[_class]]
 
 model.fit_generator(
         train_generator,
