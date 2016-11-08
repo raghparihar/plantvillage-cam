@@ -19,14 +19,14 @@ import glob
 import os
 
 NUMBER_OF_CLASSES  = 13
-DATA_FOLDER = "/mount/SDC/casava/split-data/output"
+DATA_FOLDER = "/mount/SDC/casava/split-data/output-normalized"
 img_width, img_height = 224, 224
 crop_width, crop_height = 224, 224
 
 train_data_dir = DATA_FOLDER + '/train'
 validation_data_dir = DATA_FOLDER + '/test'
-nb_train_samples = 9284
-nb_validation_samples = 2389
+nb_train_samples = len(glob.glob(train_data_dir+"/*/*.JPG"))
+nb_validation_samples = len(glob.glob(validation_data_dir+"/*/*.JPG"))
 nb_epoch = 50
 
 base_model = VGG16(weights='imagenet', input_tensor=Input((3, 224, 224)),include_top=False)
