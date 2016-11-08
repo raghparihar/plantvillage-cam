@@ -5,7 +5,7 @@ from keras.models import Sequential, Model
 from keras.layers import Convolution2D, ZeroPadding2D, MaxPooling2D, Input, Activation, GlobalAveragePooling2D
 from keras.layers.core import Flatten, Dense, Dropout, Lambda
 from keras import backend as K
-from keras.optimizers import SGD
+from keras.optimizers import SGD, Adagrad
 
 from keras.preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator
@@ -43,7 +43,8 @@ predictions = Activation("softmax", name="activation")(x)
 
 # this is the model we will train
 model = Model(input=base_model.input, output=predictions)
-model.compile(optimizer=SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True), loss='categorical_crossentropy', metrics=["accuracy"])
+_opt = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
+model.compile(optimizer=_opt, loss='categorical_crossentropy', metrics=["accuracy"])
 
 
 
@@ -76,14 +77,6 @@ validation_generator = test_datagen.flow_from_directory(
         batch_size=32,
         class_mode='categorical')
 
-#Compute class weights
-class_weight = {}
-for _class in validation_generator.class_indices.keys():
-    class_weight[validation_generator.class_indices[_class]] = len(glob.glob(validation_data_dir+"/"+_class+"/*"))
-max_labels = np.max(np.array(class_weight.values()))
-#Normalize the class weights
-for _class in validation_generator.class_indices.keys():
-    class_weight[validation_generator.class_indices[_class]] = max_labels / class_weight[validation_generator.class_indices[_class]]
 
 model.fit_generator(
         train_generator,
@@ -91,5 +84,4 @@ model.fit_generator(
         nb_epoch=nb_epoch,
         validation_data=validation_generator,
         nb_val_samples=nb_validation_samples,
-        class_weight=class_weight,
         callbacks=callbacks_list)
